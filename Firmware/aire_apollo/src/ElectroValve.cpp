@@ -18,7 +18,7 @@ class ElectroValve
 public:
   ElectroValve(uint8_t pin, uint16_t hz = 10, bool invertedLogic = false) :
   _pin(pin),_trueState(!invertedLogic),_valveCycleMs(1000/hz),
-  _openDelayMS(_valveCycleMs/4),_closeDelayMS(_valveCycleMs/4)
+  _openDelayMS(25),_closeDelayMS(25)
   {
     pinMode(_pin, OUTPUT);
   }
@@ -28,7 +28,14 @@ public:
     if(percent > 100) percent = 100;
     if(percent == 0)  closeEv();
     _openPercent = percent;
-    _openTimeMS  = (_valveCycleMs - _openDelayMS - _closeDelayMS) * percent / 100;
+    _openTimeMS  = (_valveCycleMs - _openDelayMS - _closeDelayMS) * float(percent) / 100;
+    TRACE("oTime:" + String(_openTimeMS));
+  }
+
+  void fullOpen()
+  {
+    close();
+    openEV();
   }
 
   void close()
@@ -46,7 +53,7 @@ public:
 
     uint16_t timeReference = millis()%_valveCycleMs; //Hallamos en que momento del ciclo de la valvula estamos
 
-    if( (evStatus()) && (timeReference >= (_openDelayMS + _openTimeMS) ) ) //Si la valvula esta abierta y ya ha pasado el tiempo de estar abierta la cerramos
+    if( evStatus() && ( timeReference >= (_openDelayMS + _openTimeMS) ) ) //Si la valvula esta abierta y ya ha pasado el tiempo de estar abierta la cerramos
         closeEv();
     else if(!evStatus() && (timeReference <= (_openDelayMS+_openTimeMS) ) ) // Si no está abierta y estamos dentro del tiempo de estar abierta la abrimos
         openEV();

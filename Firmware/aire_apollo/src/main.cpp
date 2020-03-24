@@ -30,10 +30,10 @@
 
 
 
-#define ENTRY_EV_PIN    10   //ElectroValvula - Entrada
+#define INTAKE_EV_PIN    10 //ElectroValvula - Entrada
 #define EXIT_EV_PIN     9   //ElectroValvula - Salida
 
-#define ENTRY_FLOW_PIN  4    //Sensor de Flujo - Entrada
+#define INTAKE_FLOW_PIN  4    //Sensor de Flujo - Entrada
 #define EXIT_FLOW_PIN   5    //Sendor de Flujo - Salida
 
 #define LOG_INTERVAL    10    //milliseconds
@@ -91,6 +91,16 @@ enum respiratorStatus
 
 respiratorStatus status = WAIT_FOR_INSPIRATION;
 
+
+pressureSensorBME280 pSensor();
+ElectroValve   IntakeValve(INTAKE_EV_PIN);
+ElectroValve   ExitValve(EXIT_EV_PIN);
+FlowSensorInt  fSensor(1000);
+
+void flowInterrupt()
+{
+  fSensor.pulse();
+}
 
 // BEGIN Sensors and actuators
 
@@ -168,12 +178,15 @@ void setup() {
     Serial.begin(115200);
     while(!Serial);    // time to get serial running
 
+    pinMode(3, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(3), flowInterrupt, RISING);
+
     delayTime = 0;
     setBPM(8);
     Serial.println();
+    IntakeValve.open(100);
+    ExitValve.fullOpen();
 }
-
-
 
 void beginInspiration()
 {
@@ -204,6 +217,7 @@ void alarm(const char* value)
   // local sound alarm?
   Serial.println("ALARM: " + String(value));
 }
+
 
 
 
@@ -262,8 +276,11 @@ void loop() {
 	calculateCompliance(pplat, peep);
 */
 
+IntakeValve.update();
+ExitValve.update();
 
+Serial.println(fSensor.getInstantFlow());
 
 // envio de datos
-  logData();
+//  logData();
 }

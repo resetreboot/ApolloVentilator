@@ -10,7 +10,7 @@
 class FlowSensorInt
 {
   public:
-    FlowSensorInt(uint16_t pulses_per_liter,uint8_t sampling_ms = 10):
+    FlowSensorInt(uint16_t pulses_per_liter = 1000,uint8_t sampling_ms = 10):
     _pulsesPerLiter(pulses_per_liter), _samplingMS(sampling_ms)
     {
 
