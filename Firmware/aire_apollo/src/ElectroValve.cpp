@@ -2,6 +2,7 @@
 #define VALVEC
 
 #include "Arduino.h"
+#include "debug.cpp"
 
 //Valve cicle for 10hz 100%
 //|open    opened      close

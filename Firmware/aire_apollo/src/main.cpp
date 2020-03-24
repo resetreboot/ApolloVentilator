@@ -15,19 +15,20 @@
   BSD license, all text above must be included in any redistribution
   See the LICENSE file for details.
  ***************************************************************************/
+#define DEBUG
+#include "debug.cpp"
+
 #include "Arduino.h"
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 
-#define DEBUG
+#include "pressureBM280.cpp"
+#include "ElectroValve.cpp"
+#include "FlowSensorInt.cpp"
 
-#ifdef DEBUG
-  #define TRACE(cadena) Serial.println("DEBUG: "  cadena)
-#else
-  #define TRACE(cadena) {}
-#endif
+
 
 #define ENTRY_EV_PIN    10   //ElectroValvula - Entrada
 #define EXIT_EV_PIN     9   //ElectroValvula - Salida
@@ -46,7 +47,6 @@
 #define ESPIRATION_TIME 4000
 #define INSPIRATION_THRESHOLD 10  //Descenso en la presion que marca el inicio de la respiracion
 
-Adafruit_BME280 bme; // I2C
 
 unsigned long delayTime;
 
@@ -94,45 +94,7 @@ respiratorStatus status = WAIT_FOR_INSPIRATION;
 
 // BEGIN Sensors and actuators
 
-// Open Entry valve
-void openEntryEV()
-{
-     digitalWrite(ENTRY_EV_PIN, 1);
-}
-
-// Close Entry valve
-void closeEntryEV()
-{
-    digitalWrite(ENTRY_EV_PIN, 0);
-}
-
-// Get Entry EV state
-int getEntryEVState()
-{
-  return digitalRead(ENTRY_EV_PIN);
-}
-
-// Open exit EV
-void openExitEV()
-{
-    digitalWrite(EXIT_EV_PIN, 1);
-}
-
-
-// Close exit EV
-void closeExitEV()
-{
-    digitalWrite(EXIT_EV_PIN, 0);
-}
-
-// Get the status of the Exit EV (Open/Close)
-// To be change  depending on the EV type Full open, Servo, Solenoid...
-int getExitEVState()
-{
-  return digitalRead(EXIT_EV_PIN) ;
-}
-
-
+/*
 // Get metric from entry flow mass sensor
 float getMetricVolumeEntry(){
   float v;
@@ -140,29 +102,25 @@ float getMetricVolumeEntry(){
 
   // Simulate sensor, if valve is open just return 52 l/m
   // to see if it helps displaying graphs
-  
+
   if(status==INSPIRATION_CICLE)
     v = 52.00F;
   else
     v = 5.00F;
-  
+
  return v;
 
 }
 
 // Get metric from exit flow mass sensor
 float getMetricVolumeExit(){
-  
+
  float v = analogRead(EXIT_FLOW_PIN)*0.0049F;
  return v;
 }
 
-// Get metric from pressure sensor in mBar
-float getMetricPressureEntry()
-{
-    float val = bme.readPressure();
-    return val / 100.0F; // hpa
-}
+*/
+
 
 // END sensors and actuator
 
@@ -191,9 +149,9 @@ void logData()
 {
     unsigned long now = millis();
     if( (now - lastLogTime) >= LOG_INTERVAL)
-    {        
-        String result = "DATA:"+String(getMetricPressureEntry()) + "," + String(getMetricVolumeEntry()) + "," + String(getMetricVolumeExit());
-        Serial.println(result);
+    {
+//        String result = "DATA:"+String(getMetricPressureEntry()) + "," + String(getMetricVolumeEntry()) + "," + String(getMetricVolumeExit());
+//        Serial.println(result);
         lastLogTime = now;
     }
 }
@@ -210,26 +168,6 @@ void setup() {
     Serial.begin(115200);
     while(!Serial);    // time to get serial running
 
-    pinMode(ENTRY_EV_PIN, OUTPUT);
-    pinMode(EXIT_EV_PIN, OUTPUT);
-
-    // BME280
-
-    if (!bme.begin(BME280_ADDR)) {
-        TRACE("BME280 sensor not found!!!");
-        TRACE("HALT!");
-        //while (1);
-    }
-
-    // set max sampling for pressure sensor
-    bme.setSampling(Adafruit_BME280::MODE_NORMAL,
-                   Adafruit_BME280::SAMPLING_X1,
-                   Adafruit_BME280::SAMPLING_X16,
-                   Adafruit_BME280::SAMPLING_X1,
-                   Adafruit_BME280::FILTER_OFF,
-                   Adafruit_BME280::STANDBY_MS_0_5);
-    //
-
     delayTime = 0;
     setBPM(8);
     Serial.println();
@@ -239,16 +177,12 @@ void setup() {
 
 void beginInspiration()
 {
-  openEntryEV();
-  closeExitEV();
   lastInspirationStart = millis();
   status = INSPIRATION_CICLE;
 }
 
 void beginEspiration()
 {
-  closeEntryEV();
-  openExitEV(); // hack para pruebas!!!
   lastEspirationStart = millis();
   status = ESPIRATION_CICLE;
 }
@@ -256,9 +190,9 @@ void beginEspiration()
 bool checkForPatientInspiration()
 {
   float pressureReference = 950;
-  if ( (pressureReference - getMetricPressureEntry()) > INSPIRATION_THRESHOLD )
-    return true;
-  else
+//  if ( (pressureReference - getMetricPressureEntry()) > INSPIRATION_THRESHOLD )
+    //return true;
+//  else
     return false;
 }
 
@@ -275,6 +209,7 @@ void alarm(const char* value)
 
 void loop() {
 // Control del ciclo de respiracion
+/*
   if(status == RESPIRATOR_PAUSED)
   {
     TRACE("PAUSED...");
@@ -325,6 +260,9 @@ void loop() {
   float volExit = getMetricVolumeExit();
 	checkLeak(volc, volExit);
 	calculateCompliance(pplat, peep);
+*/
+
+
 
 // envio de datos
   logData();

@@ -2,6 +2,7 @@
 #define FLOWIC
 
 #include "Arduino.h"
+#include "debug.cpp"
 
 //ojo! para que esta clase funcione correctamente hay que llamar a pulse() desde la interrupcion del pin del sensor.
 // Tambien hay que llamar a la funcion update con una interrupcion cada 1ms.
