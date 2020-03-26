@@ -4,21 +4,13 @@
 #include "Arduino.h"
 #include "debug.cpp"
 
-//Valve cicle for 10hz 100%
-//|open    opened      close
-//|25ms |    50ms   | 25ms   |
-//|-----|-----------|--------|
-//Valve cicle for 10hz 50%
-//|open    opened      close
-//|25ms |    25ms   | 25ms   |
-//|-----|-----------|--------|
 
 class ElectroValve
 {
 public:
-  ElectroValve(uint8_t pin, uint16_t hz = 10, bool invertedLogic = false) :
-  _pin(pin),_trueState(!invertedLogic),_valveCycleMs(1000/hz),
-  _openDelayMS(25),_closeDelayMS(25)
+  ElectroValve(uint8_t pin, uint16_t openDelay=30,uint16_t closeDelay=10, bool invertedLogic = false) :
+  _pin(pin),_trueState(!invertedLogic),
+  _openDelayMS(openDelay),_closeDelayMS(closeDelay)
   {
     pinMode(_pin, OUTPUT);
   }
@@ -26,22 +18,30 @@ public:
   void open(uint8_t percent = 100)
   {
     if(percent > 100) percent = 100;
-    if(percent == 0)  closeEv();
+    if(_openPercent == 0)
+    {
+        magnetize();
+        delay(_openDelayMS);
+    }
+    if(percent == 0)  close();
     _openPercent = percent;
-    _openTimeMS  = (_valveCycleMs - _openDelayMS - _closeDelayMS) * float(percent) / 100;
-    TRACE("oTime:" + String(_openTimeMS));
+    _deMagnetizedTimeMS  =  (100-percent)/5;
+    _magnetizedTimeMS = _deMagnetizedTimeMS * (_openDelayMS/float(_closeDelayMS));
+    _cycleTimeMS = _magnetizedTimeMS + _deMagnetizedTimeMS;
+    TRACE("mTime:" + String(_magnetizedTimeMS) + "dTime:" + String(_deMagnetizedTimeMS) + "cyclems:" + String(_cycleTimeMS) );
   }
 
   void fullOpen()
   {
     close();
-    openEV();
+    magnetize();
   }
 
   void close()
   {
     _openPercent = 0;
-    closeEv();
+    demagnetize();
+    delay(_closeDelayMS);
   }
 
   uint8_t openPercent() {return _openPercent;}
@@ -51,28 +51,29 @@ public:
   {
     if(!isOpen()) return;
 
-    uint16_t timeReference = millis()%_valveCycleMs; //Hallamos en que momento del ciclo de la valvula estamos
+    uint16_t timeReference = millis()%_cycleTimeMS; //Hallamos en que momento del ciclo de la valvula estamos
 
-    if( evStatus() && ( timeReference >= (_openDelayMS + _openTimeMS) ) ) //Si la valvula esta abierta y ya ha pasado el tiempo de estar abierta la cerramos
-        closeEv();
-    else if(!evStatus() && (timeReference <= (_openDelayMS+_openTimeMS) ) ) // Si no está abierta y estamos dentro del tiempo de estar abierta la abrimos
-        openEV();
+    if( isMagnetized() && ( timeReference >= _magnetizedTimeMS ) ) //Si la valvula esta abierta y ya ha pasado el tiempo de estar abierta la cerramos
+        demagnetize();
+    else if(!isMagnetized() && (timeReference <= _magnetizedTimeMS) ) // Si no está abierta y estamos dentro del tiempo de estar abierta la abrimos
+        magnetize();
   }
 
 protected:
 
-  void openEV()   {digitalWrite(_pin,_trueState);}
-  void closeEv()  {digitalWrite(_pin,!_trueState);}
-  bool evStatus() {return(digitalRead(_pin)==_trueState);}
+  void magnetize()    {digitalWrite(_pin,_trueState);}
+  void demagnetize()  {digitalWrite(_pin,!_trueState);}
+  bool isMagnetized() {return(digitalRead(_pin)==_trueState);}
 
 
   const uint8_t   _pin;
-  const uint16_t  _valveCycleMs;
   const bool      _trueState;
   uint8_t         _openPercent;
-  uint16_t        _openDelayMS;
-  uint16_t        _closeDelayMS;
-  uint16_t        _openTimeMS;
+  const uint16_t  _openDelayMS;
+  const uint16_t  _closeDelayMS;
+  uint16_t        _cycleTimeMS;
+  uint16_t        _magnetizedTimeMS;
+  uint16_t        _deMagnetizedTimeMS;
 };
 
 

@@ -92,7 +92,7 @@ enum respiratorStatus
 respiratorStatus status = WAIT_FOR_INSPIRATION;
 
 
-pressureSensorBME280 pSensor();
+pressureSensorBME280 pSensor;
 ElectroValve   IntakeValve(INTAKE_EV_PIN);
 ElectroValve   ExitValve(EXIT_EV_PIN);
 FlowSensorInt  fSensor(1000);
@@ -147,7 +147,7 @@ int getMetricPeep(){return 22;}
 
 
 void checkLeak(float volEntry, float volExit){}
-float getMetricVolMax(){return 22;}
+float getMetricVolMax() {return 22;}
 float getMetricPresMax(){return 22;}
 
 int calculateCompliance (int pplat, int peep) {
@@ -158,10 +158,10 @@ int calculateCompliance (int pplat, int peep) {
 void logData()
 {
     unsigned long now = millis();
-    if( (now - lastLogTime) >= LOG_INTERVAL)
+    if( millis()% LOG_INTERVAL == 0)
     {
-//        String result = "DATA:"+String(getMetricPressureEntry()) + "," + String(getMetricVolumeEntry()) + "," + String(getMetricVolumeExit());
-//        Serial.println(result);
+        String result = "DATA:"+String(pSensor.readMMHg()) + "," + String(fSensor.getInstantFlow()) + "," + String(fSensor.getInstantFlow()+0.8);
+        Serial.println(result);
         lastLogTime = now;
     }
 }
@@ -169,9 +169,8 @@ void logData()
 void setBPM(uint8_t CiclesPerMinute)
 {
   inspTime            = 60000.0/float(bpm)*0.25;
-  espTime             = 60000.0/float(bpm)*0.60;
-  inspirationTimeout  = 60000.0/float(bpm)*0.15;
-  TRACE("BPM set: iTime:"+String(inspTime)+", eTime:"+String(espTime)+"iTimeout:"+String(inspirationTimeout));
+  espTime             = 60000.0/float(bpm)*0.75;
+  TRACE("BPM set: iTime:"+String(inspTime)+", eTime:"+String(espTime));
 }
 
 void setup() {
@@ -184,21 +183,25 @@ void setup() {
     delayTime = 0;
     setBPM(8);
     Serial.println();
-    IntakeValve.open(100);
-    ExitValve.fullOpen();
+    ExitValve.open();
 }
 
 void beginInspiration()
 {
   lastInspirationStart = millis();
   status = INSPIRATION_CICLE;
+  IntakeValve.open(58);
+  ExitValve.close();
 }
 
 void beginEspiration()
 {
   lastEspirationStart = millis();
   status = ESPIRATION_CICLE;
+  IntakeValve.close();
+  ExitValve.fullOpen();
 }
+
 
 bool checkForPatientInspiration()
 {
@@ -223,7 +226,6 @@ void alarm(const char* value)
 
 void loop() {
 // Control del ciclo de respiracion
-/*
   if(status == RESPIRATOR_PAUSED)
   {
     TRACE("PAUSED...");
@@ -243,8 +245,9 @@ void loop() {
   }
   else if(status == INSPIRATION_CICLE)
   {
-    if(millis() - lastInspirationStart >= inspTime)
+    if(fSensor.getFlow() >= 150)
     {
+      fSensor.resetFlow();
       TRACE("BeginEspiration");
       beginEspiration();
     }
@@ -271,16 +274,15 @@ void loop() {
 	}
 
   int peep = getMetricPeep();
-  float volExit = getMetricVolumeExit();
-	checkLeak(volc, volExit);
+//  float volExit = getMetricVolumeExit();
+//	checkLeak(volc, volExit);
 	calculateCompliance(pplat, peep);
-*/
+
 
 IntakeValve.update();
 ExitValve.update();
-
-Serial.println(fSensor.getInstantFlow());
+//Serial.println(fSensor.getInstantFlow());
 
 // envio de datos
-//  logData();
+  logData();
 }

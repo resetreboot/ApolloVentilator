@@ -10,7 +10,7 @@
 class FlowSensorInt
 {
   public:
-    FlowSensorInt(uint16_t pulses_per_liter = 1000,uint8_t sampling_ms = 10):
+    FlowSensorInt(uint16_t pulses_per_liter = 100,uint8_t sampling_ms = 10):
     _pulsesPerLiter(pulses_per_liter), _samplingMS(sampling_ms)
     {
 
@@ -24,7 +24,7 @@ class FlowSensorInt
 
     void update()
     {
-      if (millis()%_samplingMS)
+      if (millis()%_samplingMS==0)
       {
         _instantFlow = _pulsesSinceLastSample / float(_pulsesPerLiter) * 1000 ;
       }

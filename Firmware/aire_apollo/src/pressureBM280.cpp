@@ -26,7 +26,6 @@ public:
 
   float readHpa()
   {
-
     return _bme.readPressure() / 100.0;
   }
 
