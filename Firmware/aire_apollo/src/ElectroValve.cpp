@@ -8,17 +8,18 @@
 class ElectroValve
 {
 public:
-  ElectroValve(uint8_t pin, uint16_t openDelay=30,uint16_t closeDelay=10, bool invertedLogic = false) :
+  ElectroValve(uint8_t pin, uint16_t openDelay = 30 , uint16_t closeDelay = 10 , bool invertedLogic = false) :
   _pin(pin),_trueState(!invertedLogic),
   _openDelayMS(openDelay),_closeDelayMS(closeDelay)
   {
     pinMode(_pin, OUTPUT);
+    //close(); ///Aqui motherfuckers
   }
 
   void open(uint8_t percent = 100)
   {
     if(percent > 100) percent = 100;
-    if(_openPercent == 0)
+    if(_openPercent == 0)//Si estabamos cerrados primero cargamos la bobina de la valvula
     {
         magnetize();
         delay(_openDelayMS);
@@ -27,6 +28,7 @@ public:
     _openPercent = percent;
     _deMagnetizedTimeMS  =  (100-percent)/5;
     _magnetizedTimeMS = _deMagnetizedTimeMS * (_openDelayMS/float(_closeDelayMS));
+    if(_openPercent == 100) _magnetizedTimeMS = 100;
     _cycleTimeMS = _magnetizedTimeMS + _deMagnetizedTimeMS;
     TRACE("mTime:" + String(_magnetizedTimeMS) + "dTime:" + String(_deMagnetizedTimeMS) + "cyclems:" + String(_cycleTimeMS) );
   }

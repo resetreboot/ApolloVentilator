@@ -36,7 +36,7 @@
 #define INTAKE_FLOW_PIN  4    //Sensor de Flujo - Entrada
 #define EXIT_FLOW_PIN   5    //Sendor de Flujo - Salida
 
-#define LOG_INTERVAL    10    //milliseconds
+#define LOG_INTERVAL    500    //milliseconds
 
 //#define PRESSURE_SENSOR_PIN      ??
 #define BME280_ADDR                0x76
@@ -47,8 +47,6 @@
 #define ESPIRATION_TIME 4000
 #define INSPIRATION_THRESHOLD 10  //Descenso en la presion que marca el inicio de la respiracion
 
-
-unsigned long delayTime;
 
 float volmax;
 float presmax;
@@ -74,12 +72,14 @@ uint16_t inspirationTimeout = 0;
 uint16_t inspTime = 0;
 uint16_t espTime = 0;
 
+
+
 //OJO a los contadores que se desbordan en algun momento!!!!
 // Gestion rtc? / deteccion de desbordamiento?
 
 //uint8_t power;
 char          logBuffer[50];
-unsigned long lastLogTime=0;
+//unsigned long lastLogTime=0;
 
 enum respiratorStatus
 {
@@ -91,20 +91,22 @@ enum respiratorStatus
 
 respiratorStatus status = WAIT_FOR_INSPIRATION;
 
-
-pressureSensorBME280 pSensor;
-ElectroValve   IntakeValve(INTAKE_EV_PIN);
-ElectroValve   ExitValve(EXIT_EV_PIN);
-FlowSensorInt  fSensor(1000);
+pressureSensorBME280  pSensor(BME280_ADDR);
+ElectroValve          IntakeValve(INTAKE_EV_PIN);
+//ElectroValve          ExitValve(EXIT_EV_PIN);
+FlowSensorInt         fSensor(1000);
 
 void flowInterrupt()
 {
   fSensor.pulse();
 }
 
+
+
+
 // BEGIN Sensors and actuators
 
-/*
+
 // Get metric from entry flow mass sensor
 float getMetricVolumeEntry(){
   float v;
@@ -129,10 +131,12 @@ float getMetricVolumeExit(){
  return v;
 }
 
-*/
+
 
 
 // END sensors and actuator
+
+
 
 
 int getMetricPpeak(){return 22;}
@@ -157,12 +161,15 @@ int calculateCompliance (int pplat, int peep) {
 
 void logData()
 {
-    unsigned long now = millis();
     if( millis()% LOG_INTERVAL == 0)
     {
-        String result = "DATA:"+String(pSensor.readMMHg()) + "," + String(fSensor.getInstantFlow()) + "," + String(fSensor.getInstantFlow()+0.8);
-        Serial.println(result);
-        lastLogTime = now;
+      String pVal    = String(pSensor.readMMHg());
+      String fInVal  = String(fSensor.getInstantFlow());
+      String fOutVal = String(fSensor.getInstantFlow()*0.8);
+      String inValveVal = "0";//String(IntakeValve.openPercent());
+      String outValveVal = "0";//String(ExitValve.openPercent());
+      String result = "DATA:" + pVal + "," + fInVal + "," + fOutVal + "," + inValveVal + "," + outValveVal;
+      Serial.println(result);
     }
 }
 
@@ -173,33 +180,35 @@ void setBPM(uint8_t CiclesPerMinute)
   TRACE("BPM set: iTime:"+String(inspTime)+", eTime:"+String(espTime));
 }
 
+
+
+
 void setup() {
     Serial.begin(115200);
     while(!Serial);    // time to get serial running
+    TRACE("INIT...!");
+    yield();
 
     pinMode(3, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(3), flowInterrupt, RISING);
-
-    delayTime = 0;
     setBPM(8);
-    Serial.println();
-    ExitValve.open();
+    //ExitValve.open();
 }
 
 void beginInspiration()
 {
   lastInspirationStart = millis();
   status = INSPIRATION_CICLE;
-  IntakeValve.open(58);
-  ExitValve.close();
+  //IntakeValve.open();
+  //ExitValve.close();
 }
 
 void beginEspiration()
 {
   lastEspirationStart = millis();
   status = ESPIRATION_CICLE;
-  IntakeValve.close();
-  ExitValve.fullOpen();
+  //IntakeValve.close();
+  //ExitValve.open();
 }
 
 
@@ -222,9 +231,9 @@ void alarm(const char* value)
 }
 
 
-
-
 void loop() {
+//  Serial.println("LLOPPP!!!");
+
 // Control del ciclo de respiracion
   if(status == RESPIRATOR_PAUSED)
   {
@@ -279,10 +288,10 @@ void loop() {
 	calculateCompliance(pplat, peep);
 
 
-IntakeValve.update();
-ExitValve.update();
+//IntakeValve.update();
+//ExitValve.update();
 //Serial.println(fSensor.getInstantFlow());
-
 // envio de datos
   logData();
+
 }
