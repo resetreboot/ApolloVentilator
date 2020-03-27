@@ -10,7 +10,7 @@
 class FlowSensorInt
 {
   public:
-    FlowSensorInt(uint16_t pulses_per_liter = 100,uint8_t sampling_ms = 10):
+    FlowSensorInt(uint16_t pulses_per_liter = 100,uint8_t sampling_ms = 25):
     _pulsesPerLiter(pulses_per_liter), _samplingMS(sampling_ms)
     {
 
@@ -24,28 +24,27 @@ class FlowSensorInt
 
     void update()
     {
-      if (millis()%_samplingMS==0)
+      if( millis() % _samplingMS==0 )
       {
-        _instantFlow = _pulsesSinceLastSample / float(_pulsesPerLiter) * 1000 ;
+        _instantFlow = (_pulsesSinceLastSample / float(_pulsesPerLiter) ) * (60*(1000/float(_samplingMS))) * 1000.0 ;
+        _pulsesSinceLastSample = 0;
       }
     }
 
-    uint16_t getInstantFlow()
+    float getInstantFlow()
     {
       return _instantFlow;
     }
 
-    unsigned long getFlow()
+    float getFlow()
     {
-      return _pulseCounter / float(_pulsesPerLiter) * 1000;
+      return _pulseCounter / float(_pulsesPerLiter) * 1000.0;
     }
 
     void resetFlow()
     {
       _pulseCounter = 0;
     }
-
-
 
   protected:
       uint16_t      _pulsesPerLiter;

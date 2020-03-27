@@ -23,6 +23,8 @@
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include <MsTimer2.h>
+
 
 #include "pressureBM280.cpp"
 #include "ElectroValve.cpp"
@@ -31,12 +33,12 @@
 
 
 #define INTAKE_EV_PIN    10 //ElectroValvula - Entrada
-#define EXIT_EV_PIN     9   //ElectroValvula - Salida
+#define EXIT_EV_PIN      8  //ElectroValvula - Salida
 
-#define INTAKE_FLOW_PIN  4    //Sensor de Flujo - Entrada
-#define EXIT_FLOW_PIN   5    //Sendor de Flujo - Salida
+#define INTAKE_FLOW_PIN  4  //Sensor de Flujo - Entrada
+#define EXIT_FLOW_PIN    5  //Sendor de Flujo - Salida
 
-#define LOG_INTERVAL    500    //milliseconds
+#define LOG_INTERVAL    10 //milliseconds
 
 //#define PRESSURE_SENSOR_PIN      ??
 #define BME280_ADDR                0x76
@@ -93,8 +95,9 @@ respiratorStatus status = WAIT_FOR_INSPIRATION;
 
 pressureSensorBME280  pSensor(BME280_ADDR);
 ElectroValve          IntakeValve(INTAKE_EV_PIN);
-//ElectroValve          ExitValve(EXIT_EV_PIN);
-FlowSensorInt         fSensor(1000);
+ElectroValve          ExitValve(EXIT_EV_PIN);
+ElectroValve          hackValve(9);
+FlowSensorInt         fSensor(1000,250);
 
 void flowInterrupt()
 {
@@ -126,18 +129,12 @@ float getMetricVolumeEntry(){
 
 // Get metric from exit flow mass sensor
 float getMetricVolumeExit(){
-
  float v = analogRead(EXIT_FLOW_PIN)*0.0049F;
  return v;
 }
 
 
-
-
 // END sensors and actuator
-
-
-
 
 int getMetricPpeak(){return 22;}
 int getMetricPplat(){return 22;}
@@ -147,8 +144,6 @@ int calculateResistance (int ppeak, int pplat) {
 }
 
 int getMetricPeep(){return 22;}
-
-
 
 void checkLeak(float volEntry, float volExit){}
 float getMetricVolMax() {return 22;}
@@ -165,9 +160,9 @@ void logData()
     {
       String pVal    = String(pSensor.readMMHg());
       String fInVal  = String(fSensor.getInstantFlow());
-      String fOutVal = String(fSensor.getInstantFlow()*0.8);
-      String inValveVal = "0";//String(IntakeValve.openPercent());
-      String outValveVal = "0";//String(ExitValve.openPercent());
+      String fOutVal = String(fSensor.getFlow());
+      String inValveVal = String(IntakeValve.openPercent());
+      String outValveVal = String(ExitValve.openPercent());
       String result = "DATA:" + pVal + "," + fInVal + "," + fOutVal + "," + inValveVal + "," + outValveVal;
       Serial.println(result);
     }
@@ -181,34 +176,47 @@ void setBPM(uint8_t CiclesPerMinute)
 }
 
 
-
+void pollSensors()
+{
+  IntakeValve.update();
+  ExitValve.update();
+  hackValve.update();
+  fSensor.update();
+}
 
 void setup() {
     Serial.begin(115200);
     while(!Serial);    // time to get serial running
     TRACE("INIT...!");
     yield();
-
+    IntakeValve.setup();
+    ExitValve.setup();
     pinMode(3, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(3), flowInterrupt, RISING);
     setBPM(8);
     //ExitValve.open();
+
+//ISRs
+    MsTimer2::set(1, pollSensors); // 500ms period
+    MsTimer2::start();
+    attachInterrupt(digitalPinToInterrupt(3), flowInterrupt, RISING);
 }
 
 void beginInspiration()
 {
   lastInspirationStart = millis();
   status = INSPIRATION_CICLE;
-  //IntakeValve.open();
-  //ExitValve.close();
+  hackValve.close();
+  IntakeValve.open();
+  ExitValve.close();
 }
 
 void beginEspiration()
 {
   lastEspirationStart = millis();
   status = ESPIRATION_CICLE;
-  //IntakeValve.close();
-  //ExitValve.open();
+  IntakeValve.close();
+  hackValve.open();
+  ExitValve.open();
 }
 
 
@@ -232,8 +240,8 @@ void alarm(const char* value)
 
 
 void loop() {
-//  Serial.println("LLOPPP!!!");
-
+/*
+//  Serial.println("LOOPPP!!!");
 // Control del ciclo de respiracion
   if(status == RESPIRATOR_PAUSED)
   {
@@ -286,12 +294,17 @@ void loop() {
 //  float volExit = getMetricVolumeExit();
 //	checkLeak(volc, volExit);
 	calculateCompliance(pplat, peep);
-
-
-//IntakeValve.update();
-//ExitValve.update();
-//Serial.println(fSensor.getInstantFlow());
 // envio de datos
   logData();
-
+*/
+//hackValve.open();
+delay(5000);
+Serial.println("Start:");
+fSensor.resetFlow();
+//hackValve.close();
+IntakeValve.open(10);
+delay(5000);
+IntakeValve.close();
+//hackValve.open();
+Serial.println("Flow:"+String(fSensor.getFlow()));
 }

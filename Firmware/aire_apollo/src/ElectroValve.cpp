@@ -12,8 +12,13 @@ public:
   _pin(pin),_trueState(!invertedLogic),
   _openDelayMS(openDelay),_closeDelayMS(closeDelay)
   {
+
+  }
+
+  void setup()
+  {
     pinMode(_pin, OUTPUT);
-    //close(); ///Aqui motherfuckers
+    close();
   }
 
   void open(uint8_t percent = 100)
@@ -26,7 +31,7 @@ public:
     }
     if(percent == 0)  close();
     _openPercent = percent;
-    _deMagnetizedTimeMS  =  (100-percent)/5;
+    _deMagnetizedTimeMS  =  (100-percent);
     _magnetizedTimeMS = _deMagnetizedTimeMS * (_openDelayMS/float(_closeDelayMS));
     if(_openPercent == 100) _magnetizedTimeMS = 100;
     _cycleTimeMS = _magnetizedTimeMS + _deMagnetizedTimeMS;
